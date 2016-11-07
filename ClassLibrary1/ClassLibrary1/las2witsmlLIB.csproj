@@ -41,6 +41,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Las.cs" />
+    <Compile Include="LogCurveInfo.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Witsml.cs" />
   </ItemGroup>
