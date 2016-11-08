@@ -4,3 +4,5 @@ C:\Users\Борис\Desktop\las2witsmlLIB\ClassLibrary1\ConsoleApplication1\bin\
 C:\Users\Борис\Desktop\las2witsmlLIB\ClassLibrary1\ConsoleApplication1\obj\Debug\ConsoleApplication1.csprojResolveAssemblyReference.cache
 C:\Users\Борис\Desktop\las2witsmlLIB\ClassLibrary1\ConsoleApplication1\obj\Debug\ConsoleApplication1.exe
 C:\Users\Борис\Desktop\las2witsmlLIB\ClassLibrary1\ConsoleApplication1\obj\Debug\ConsoleApplication1.pdb
+C:\Users\Борис\Desktop\las2witsmlLIB\ClassLibrary1\ConsoleApplication1\bin\Debug\ClassLibrary1.dll
+C:\Users\Борис\Desktop\las2witsmlLIB\ClassLibrary1\ConsoleApplication1\bin\Debug\ClassLibrary1.pdb
