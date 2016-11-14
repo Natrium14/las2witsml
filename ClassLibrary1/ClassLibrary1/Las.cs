@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Collections.Generic;
 
 namespace ClassLibrary1
 {
@@ -13,102 +14,233 @@ namespace ClassLibrary1
             InputStream = inputStream;
             nextLine = null;
 
-            LogCurveInfos = null;
+            LogCurveInfos = new List<LogCurveInfo>();
             CurveValues = null;
             MeasuredDepthUnit = null;
-            StartMeasuredDepthIndex = null;
-            StopMeasuredDepthIndex = null;
-            StartDateTimeIndex = null;
-            StopDateTimeIndex = null;
+            StartMeasuredDepthIndex = 0;
+            StopMeasuredDepthIndex = 0;
+            StartDateTimeIndex = 0;
+            StopDateTimeIndex = 0;
+            StepIncrement = 0;
             NullValue = null;
             ServiceCompany = null;
             ElevationKellyBushing = null;
             LogMeasuredFrom = null;
             PermanentDatum = null;
-            AbovePermanentDatum = null;
-            ElevationPermanentDatum = null;
+            AbovePermanentDatum = 0;
+            ElevationPermanentDatum = 0;
+            RunNumber = 0;
         }
 
-        public string LogCurveInfos { get; set; }
+        public List<LogCurveInfo> LogCurveInfos; // Лист параметров в секции А - берется по всем выделенным параметрам кривых в секции С
         public string CurveValues { get; set; }
         public string MeasuredDepthUnit { get; set; }
-        public string StartMeasuredDepthIndex { get; set; }
-        public string StopMeasuredDepthIndex { get; set; }
-        public string StartDateTimeIndex { get; set; }
-        public string StopDateTimeIndex { get; set; }
+        public double StartMeasuredDepthIndex { get; set; }
+        public double StopMeasuredDepthIndex { get; set; }
+        public double StartDateTimeIndex { get; set; }
+        public double StopDateTimeIndex { get; set; }
+        public double StepIncrement { get; set; }
         public string NullValue { get; set; }
         public string ServiceCompany { get; set; }
         public string ElevationKellyBushing { get; set; }
         public string LogMeasuredFrom { get; set; }
         public string PermanentDatum { get; set; }
-        public string AbovePermanentDatum { get; set; }
-        public string ElevationPermanentDatum { get; set; }
+        public double AbovePermanentDatum { get; set; }
+        public double ElevationPermanentDatum { get; set; }
+        public double RunNumber { get; set; }
+        public string ElevationUnit { get; set; }
 
         private StreamReader InputStream { get; }
         private string nextLine { get; set; }
+        private char[] separator = new char[] {'~','.',':',' '};
 
+        // Главный метод данного класса, где будет считываться весь файл по секциям
+        //
         public void Process()
         {
             while (!InputStream.EndOfStream)
             {
-                var stringFile = NextLine();
+                nextLine = ReadNextLine();
                 var section = '0';
-                if (stringFile != null)
+                if (nextLine != null)
                 {
-                    section = char.ToLower(stringFile[1]);
+                    section = char.ToLower(nextLine[1]);
                 }
 
                 switch (section)
-                {
-                    case 'v':
-                        BlockVersion();
-                        break;
+                {                    
                     case 'w':
-                        BlockWell();
+                        SectionWell(nextLine);
                         break;
                     case 'c':
-                        BlockCurve();
+                        SectionCurve(nextLine);
                         break;
                     case 'p':
-                        BlockParameter();
-                        break;
-                    case 'o':
-                        break;
-                    case 'a':
-                        BlockOther();
+                        SectionParameter(nextLine);
                         break;
                 }
             }
         }
 
-        public string NextLine()
+        // Переход к следующей строке файла
+        //
+        public string ReadNextLine()
         {
             return InputStream.ReadLine();
         }
 
-        public void BlockVersion()
+        // Переход к предидущей строке файла
+        //
+        public void PreviousLine(string line)
         {
+            nextLine = line; 
+        }
+              
+        // Проверка - является ли измеряемый промежуток отрезком глубины
+        //
+        public string IsDepthUnit(string unit)
+        {
+            if ((unit.ToLower() == "ft") || 
+                (unit.ToLower() == "f")  || 
+                (unit.ToLower() == "fm") || 
+                (unit.ToLower() == "cm") || 
+                (unit.ToLower() == "in"))
+            {
+                return unit;
+            }
+            else return null;
         }
 
-        public void BlockWell()
+        // Проверка - является ли измеряемый промежуток отрезком времени 
+        //
+        public double ParseDate(string data, string info, string unit)
         {
+            if (unit.ToLower() == "s" || unit.ToLower() == "sec")
+            {
+                return Convert.ToDouble(data);
+            }
+            if (unit.ToLower() == "date" || unit.ToLower() == "d")
+            {
+                // HZ 
+                return Convert.ToDouble(data);
+            }
+            return -1;
+        }
+          
+        // Обработка секции W
+        //
+        public void SectionWell(string line)
+        {
+            while (line[0] != '~')
+            {
+                line = ReadNextLine();
+                string[] mnemonicLine = line.Split(separator); // Тут ОШИБКА - нужно правильно рассечь строку на 4 части, видимо нужно использовать регулярные выражения
+                string mnemonic = mnemonicLine[0]; // Навзание мнемоники
+                string unit = mnemonicLine[1]; // Единицы измерения
+                string data = mnemonicLine[2]; // Значение
+                string info = mnemonicLine[3]; // Описание
+
+                switch (mnemonic)
+                {
+                    case "STRT":
+                        if (IsDepthUnit(unit) != null)
+                        {
+                            MeasuredDepthUnit = unit;
+                            StartMeasuredDepthIndex = Convert.ToDouble(data);
+                        }
+                        else
+                        {
+                            StartDateTimeIndex = ParseDate(data, info, unit); // тут ошибка пока-что = нужно парсить дату или секунды - хз пока
+                        }
+                        break;
+                    case "STOP":
+                        if (IsDepthUnit(unit) != null)
+                        {
+                            MeasuredDepthUnit = unit;
+                            StopMeasuredDepthIndex = Convert.ToDouble(data);
+                        }
+                        else
+                        {
+                            StopDateTimeIndex = ParseDate(data, info, unit); // тут ошибка пока-что = нужно парсить дату или секунды - хз пока
+                        }
+                        break;
+                    case "STEP":
+                        StepIncrement = Convert.ToDouble(data);
+                        break;
+                    case "NULL":
+                        NullValue = data;
+                        break;
+                    case "SRVC":
+                        ServiceCompany = data;
+                        break;
+                }                
+            }
+            PreviousLine(line); 
         }
 
-        public void BlockCurve()
+        // Обработка секции C
+        //
+        public void SectionCurve(string line)
         {
+            while (line[0] != '~')
+            {
+                line = ReadNextLine();
+                string[] mnemonicLine = line.Split(separator); // Тут ОШИБКА - нужно правильно рассечь строку на 3 части, видимо нужно использовать регулярные выражения
+                string mnemonic = mnemonicLine[0]; // Навзание мнемоники
+                string unit     = mnemonicLine[1]; // Единицы измерения
+                string info     = mnemonicLine[2]; // Описание
+
+                LogCurveInfos.Add(new LogCurveInfo(mnemonic, unit.ToLower(), info));
+            }
+            PreviousLine(line); //// "Вот это я пока не понял как сделать"
         }
 
-        public void BlockParameter()
+        // Обработка секции P
+        //
+        public void SectionParameter(string line)
         {
-        }
+            // У меня такое чуство, что все эти параметры разработчики взяли откуда то непонятно, и их не надо сюда писать
+            // но для примера пусть будут
+            while (line[0] != '~')
+            {
+                line = ReadNextLine();
+                string[] mnemonicLine = line.Split(separator); // Тут ОШИБКА - нужно правильно рассечь строку на 3 части, видимо нужно использовать регулярные выражения
+                string mnemonic = mnemonicLine[0]; // Навзание мнемоники
+                string unit     = mnemonicLine[1]; // Единицы измерения
+                string data     = mnemonicLine[2]; // Значение
 
-        public void BlockOther()
-        {
-        }
-
-        public void SkipBlock()
-        {
+                switch(mnemonic)
+                {
+                    case "RUN":
+                        RunNumber = Convert.ToDouble(data);
+                        break;
+                    case "PDAT":
+                        PermanentDatum = data;
+                        break;
+                    case "EPD":
+                        ElevationPermanentDatum = Convert.ToDouble(data);
+                        ElevationUnit = unit;
+                        break;
+                    case "EGL":
+                        ElevationPermanentDatum = Convert.ToDouble(data);
+                        ElevationUnit = unit;
+                        break;
+                    case "LMF":
+                        LogMeasuredFrom = data;
+                        break;
+                    case "APD":
+                        AbovePermanentDatum = Convert.ToDouble(data);
+                        ElevationUnit = unit;
+                        break;
+                    case "EKB":
+                        ElevationKellyBushing = data;
+                        ElevationUnit = unit;
+                        break;
+                }
+            }
             
+            PreviousLine(line); 
         }
+        
     }
 }
