@@ -9,7 +9,7 @@ namespace ClassLibrary1
     /// <summary>
     /// Класс для описания сущности лога кривой
     /// </summary>
-    class LogCurveInfo
+    public class LogCurveInfo
     {
         public string Mnemonic { get; set; }
         public string Unit { get; set; }
