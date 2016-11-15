@@ -1,6 +1,8 @@
 ﻿using System;
 using System.IO;
 using System.Collections.Generic;
+using System.Text.RegularExpressions;
+using System.Linq;
 
 namespace ClassLibrary1
 {
@@ -32,7 +34,7 @@ namespace ClassLibrary1
             RunNumber = 0;
         }
 
-        public List<LogCurveInfo> LogCurveInfos; // чето ругается
+        public List<LogCurveInfo> LogCurveInfos; // Лист параметров в секции А - берется по всем выделенным параметрам кривых в секции С
         public string CurveValues { get; set; }
         public string MeasuredDepthUnit { get; set; }
         public double StartMeasuredDepthIndex { get; set; }
@@ -52,44 +54,64 @@ namespace ClassLibrary1
 
         private StreamReader InputStream { get; }
         private string nextLine { get; set; }
-        private char[] separator = new char[] {'~','.',':',' '};
 
+        // Главный метод данного класса, где будет считываться весь файл по секциям
+        //
         public void Process()
         {
             while (!InputStream.EndOfStream)
             {
-                var stringFile = NextLine();
+                var line = ReadNextLine();
                 var section = '0';
-                if (stringFile != null)
+                if (line != null && line[0] == '~')
                 {
-                    section = char.ToLower(stringFile[1]);
+                    section = char.ToLower(line[1]);
                 }
 
                 switch (section)
                 {                    
                     case 'w':
-                        SectionWell(stringFile);
+                        nextLine = ReadNextLine();
+                        SectionWell(nextLine);
                         break;
                     case 'c':
-                        SectionCurve(stringFile);
+                        nextLine = ReadNextLine();
+                        SectionCurve(nextLine);
                         break;
                     case 'p':
-                        SectionParameter(stringFile);
+                        nextLine = ReadNextLine();
+                        SectionParameter(nextLine);
                         break;
                 }
             }
         }
 
-        public string NextLine()
+        // Переход к следующей строке файла
+        //
+        public string ReadNextLine()
         {
-            return InputStream.ReadLine();
+            string line = "";
+            if (!string.IsNullOrEmpty(nextLine))
+            {
+                line = nextLine;
+                nextLine = null;
+            }
+            else
+            {
+                line = InputStream.ReadLine();
+            }
+            return line;
         }
 
-        public string PreviousLine(string line)
+        // Переход к предыдущей строке файла
+        //
+        public void PreviousLine(string line)
         {
-            return "Вот это я пока не понял как сделать"; 
+            nextLine = line; 
         }
               
+        // Проверка - является ли измеряемый промежуток отрезком глубины
+        //
         public string IsDepthUnit(string unit)
         {
             if ((unit.ToLower() == "ft") || 
@@ -103,6 +125,8 @@ namespace ClassLibrary1
             else return null;
         }
 
+        // Проверка - является ли измеряемый промежуток отрезком времени 
+        //
         public double ParseDate(string data, string info, string unit)
         {
             if (unit.ToLower() == "s" || unit.ToLower() == "sec")
@@ -117,16 +141,18 @@ namespace ClassLibrary1
             return -1;
         }
           
+        // Обработка секции W
+        //
         public void SectionWell(string line)
         {
             while (line[0] != '~')
-            {
-                line = NextLine();
-                string[] mnemonicLine = line.Split(separator); // Тут ОШИБКА - нужно правильно рассечь строку на 4 части, видимо нужно использовать регулярные выражения
-                string mnemonic = mnemonicLine[0]; // Навзание мнемоники
-                string unit = mnemonicLine[1]; // Единицы измерения
-                string data = mnemonicLine[2]; // Значение
-                string info = mnemonicLine[3]; // Описание
+            {             
+                var regex = new Regex(@"^([^~][^\.]+?)\.([^\s]*)(.*?):(.*)$", RegexOptions.IgnoreCase);
+                var m = regex.Match(line).Groups.Cast<Group>().Skip(1).Take(4).Select(x => x.Value.Trim()).ToList();
+                var mnemonic = m[0];
+                var unit = m[1];
+                var data = m[2];
+                var info = m[3];
 
                 switch (mnemonic)
                 {
@@ -138,7 +164,7 @@ namespace ClassLibrary1
                         }
                         else
                         {
-                            StartDateTimeIndex = ParseDate(data, info, unit); // тут ошибка пока-что = нужно парсить дату или секунды - хз пока
+                            //StartDateTimeIndex = ParseDate(data, info, unit); // тут ошибка пока-что = нужно парсить дату или секунды - хз пока
                         }
                         break;
                     case "STOP":
@@ -149,7 +175,7 @@ namespace ClassLibrary1
                         }
                         else
                         {
-                            StopDateTimeIndex = ParseDate(data, info, unit); // тут ошибка пока-что = нужно парсить дату или секунды - хз пока
+                            //StopDateTimeIndex = ParseDate(data, info, unit); // тут ошибка пока-что = нужно парсить дату или секунды - хз пока
                         }
                         break;
                     case "STEP":
@@ -161,39 +187,47 @@ namespace ClassLibrary1
                     case "SRVC":
                         ServiceCompany = data;
                         break;
-                }                
+                }
+
+                line = ReadNextLine();
             }
-            PreviousLine(line); //// "Вот это я пока не понял как сделать"
+            PreviousLine(line); 
         }
 
+        // Обработка секции C
+        //
         public void SectionCurve(string line)
         {
             while (line[0] != '~')
-            {
-                line = NextLine();
-                string[] mnemonicLine = line.Split(separator); // Тут ОШИБКА - нужно правильно рассечь строку на 3 части, видимо нужно использовать регулярные выражения
-                string mnemonic = mnemonicLine[0]; // Навзание мнемоники
-                string unit     = mnemonicLine[1]; // Единицы измерения
-                string info     = mnemonicLine[2]; // Описание
-
+            {                
+                var regex = new Regex(@"^([^~][^\.]+)\.([^: \t]*)\s*([^:]*):(.*)$", RegexOptions.IgnoreCase);
+                var m = regex.Match(line).Groups.Cast<Group>().Skip(1).Take(4).Select(x => x.Value.Trim()).ToList();
+                var mnemonic = m[0];
+                var unit = m[1];
+                var _ = m[2];
+                var info = m[3];
+                
                 LogCurveInfos.Add(new LogCurveInfo(mnemonic, unit.ToLower(), info));
+                line = ReadNextLine();
             }
             PreviousLine(line); //// "Вот это я пока не понял как сделать"
         }
 
+        // Обработка секции P
+        //
         public void SectionParameter(string line)
         {
             // У меня такое чуство, что все эти параметры разработчики взяли откуда то непонятно, и их не надо сюда писать
             // но для примера пусть будут
             while (line[0] != '~')
-            {
-                line = NextLine();
-                string[] mnemonicLine = line.Split(separator); // Тут ОШИБКА - нужно правильно рассечь строку на 3 части, видимо нужно использовать регулярные выражения
-                string mnemonic = mnemonicLine[0]; // Навзание мнемоники
-                string unit     = mnemonicLine[1]; // Единицы измерения
-                string data     = mnemonicLine[2]; // Значение
+            {                
+                var regex = new Regex(@"^([^~][^\.]+)\.([^\s]*)(.*):(.*)$", RegexOptions.IgnoreCase);
+                var m = regex.Match(line).Groups.Cast<Group>().Skip(1).Take(4).Select(x => x.Value.Trim()).ToList();
+                var mnemonic = m[0];
+                var unit = m[1];
+                var data = m[2];
 
-                switch(mnemonic)
+                switch (mnemonic)
                 {
                     case "RUN":
                         RunNumber = Convert.ToDouble(data);
@@ -221,9 +255,11 @@ namespace ClassLibrary1
                         ElevationUnit = unit;
                         break;
                 }
+
+                line = ReadNextLine();
             }
             
-            PreviousLine(line); //// "Вот это я пока не понял как сделать"
+            PreviousLine(line); 
         }
         
     }
