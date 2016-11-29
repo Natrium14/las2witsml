@@ -102,7 +102,6 @@ namespace ClassLibrary1
             // get_index: proc to extract the index from an array of values
 
             if (String.IsNullOrEmpty(las.MeasuredDepthUnit))
-                // Не знаю как корректно сделать - if las_file.measured_depth_unit then
             {
                 newLcis = LogCurveInfos;
                 var indexLci = LogCurveInfos[0];
@@ -111,9 +110,10 @@ namespace ClassLibrary1
             }
             else // это временной отрезок
             {
-                int dateIndex = MakeTimeIndexes(LogCurveInfos)[0];
-                int timeIndex = MakeTimeIndexes(LogCurveInfos)[1];
-                char dateFormat = MakeTimeIndexes(LogCurveInfos)[2];
+                object[] timeIndexes = MakeTimeIndexes(LogCurveInfos);
+                LogCurveInfo dateIndex = (LogCurveInfo) timeIndexes[0];
+                LogCurveInfo timeIndex = (LogCurveInfo) timeIndexes[1];
+                char dateFormat = (char) timeIndexes[2];
                 var indexLci = new LogCurveInfo();
                 indexLci.Mnemonic = "DATETIME";
                 var restLcis = LogCurveInfos; // rest_lcis = lcis.reject {|lci| ['time', 'date'].member?(lci.mnemonic.downcase)}  
@@ -125,33 +125,33 @@ namespace ClassLibrary1
             }
         }
 
-        public int[] MakeTimeIndexes(List<LogCurveInfo> lcis)
+        public object[] MakeTimeIndexes(List<LogCurveInfo> lcis)
         {
             // Typically we see DATE and TIME
             // We can also see only TIME in which case we expect long integer seconds since 1970
             // (There's no spec that says that; but this data comes from SLB's IDEAL which uses Unix epoch)
             // M/D Totco declares one curve named DATE. It has space separated data and time.
 
-            LogCurveInfo dateIndex = lcis.Where(x => x.Mnemonic == "date"); //?? Тут какой то лямбда запрос, пока не разобрался
-            LogCurveInfo timeIndex = lcis.Where(x => x.Mnemonic == "time"); //?? видимо получить номер колонны из lci
-            char dateFormat;
+            LogCurveInfo dateIndex = lcis.First(x => x.Mnemonic.ToLower() == "date"); //?? Тут какой то лямбда запрос, пока не разобрался
+            LogCurveInfo timeIndex = lcis.First(x => x.Mnemonic.ToLower() == "time"); //?? видимо получить номер колонны из lci
+            string dateFormat = "1";
 
             if (timeIndex == null)
             {
-             //   timeIndex = dateIndex+1 ?? dateIndex // Следующая колонка
+                timeIndex = (dateIndex + 1) ?? dateIndex; // ни понятно
             }
 
             if (dateIndex == null)
             {
-                // dateIndex = timeIndex ?? timeIndex
-                dateFormat = '1';
+                dateIndex = timeIndex ?? timeIndex;
+                dateFormat = "1";
             }
             else
             {
-                // dateFormat = lcis[dateIndex].Unit.ToLower();
+                 dateFormat = dateIndex.Unit.ToLower();
             }
 
-            return new LogCurveInfo[] { dateIndex, timeIndex, dateFormat };
+            return new object[] { dateIndex, timeIndex, dateFormat };
         }
 
         private void AddElement(string name, Dictionary<string, string> attributes)
@@ -205,6 +205,24 @@ namespace ClassLibrary1
 
             AddTextElement("curveDescription", lasLci.Description);
             AddTextElement("typeLogData", "float");
+        }
+
+        private string NormalizeUnit(string lasUnit)
+        {
+            if (String.IsNullOrEmpty(lasUnit))
+            {
+                return lasUnit;
+            }
+            else
+            {
+                string retval = Uom.Translate(lasUnit);
+                if (String.IsNullOrEmpty(retval))
+                {
+                    // raise UnrecognizedUnitException, las_unit
+                    retval = "";
+                }
+                return retval;
+            }
         }
     }
 }
