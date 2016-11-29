@@ -4,13 +4,14 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.IO;
+using Newtonsoft.Json;
 
 namespace ClassLibrary1
 {
     class Uom
     {
         string path { get; set; }
-        string uomMap { get; set; }
+        Dictionary<string, string> uomMap { get; set; }
 
         public Uom(string path)
         {
@@ -20,14 +21,14 @@ namespace ClassLibrary1
             }
             else
             {
-                this.path = defaultUomFile();
+                this.path = DefaultUomFile();
             }
-            this.uomMap = loadUomMap(this.path);
+            this.uomMap = LoadUomMap(this.path);
         }
 
-        public static string Translate(string in_uom)
+        public string Translate(string in_uom)
         {
-            return "string"; //uomMap[in_uom.ToLower()];
+            return uomMap.First(x => x.Key == in_uom).Value;
         }
 
         private string DefaultUomFile()
@@ -35,10 +36,15 @@ namespace ClassLibrary1
             return Directory.GetCurrentDirectory() + "/uom.json";
         }
 
-        private string LoadUomMap(string path)
+        private Dictionary<string,string> LoadUomMap(string path)
         {
-            return "string";
+            // JSON.parse( File.open( path, 'r') { |f| f.read })
+            StreamReader file = new StreamReader(DefaultUomFile());
+            string stringJson = file.ReadToEnd();
+            var list = JsonConvert.DeserializeObject<Dictionary<string, string>>(stringJson);
+            return list;
         }
         
     }
+    
 }

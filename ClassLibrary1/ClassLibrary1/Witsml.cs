@@ -5,6 +5,7 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Text;
 using System.Threading.Tasks;
+using System.Web;
 
 namespace ClassLibrary1
 {
@@ -15,11 +16,11 @@ namespace ClassLibrary1
     class Witsml
     {
         private StreamWriter OutputStream { get; set; }
+        private Uom Uom { get; set; }
         private int Indent { get; set; }
       //  private Las Las { get; set; }
 
         public int WitsmlVersion { get; set; }
-        public string UomFile { get; set; }
         public List<LogCurveInfo> LogCurveInfos;
 
 
@@ -27,8 +28,9 @@ namespace ClassLibrary1
         {
             this.OutputStream = outputStream;
             this.WitsmlVersion = witsmlVersion = 1410;
-            this.UomFile = uomFile;
+            //this.UomFile = uomFile;
             this.Indent = 0;
+            this.Uom = new Uom(uomFile);
         }
 
         // Главный процесс
@@ -113,16 +115,44 @@ namespace ClassLibrary1
                 object[] timeIndexes = MakeTimeIndexes(LogCurveInfos);
                 LogCurveInfo dateIndex = (LogCurveInfo) timeIndexes[0];
                 LogCurveInfo timeIndex = (LogCurveInfo) timeIndexes[1];
-                char dateFormat = (char) timeIndexes[2];
+                string dateFormat = (string) timeIndexes[2];
                 var indexLci = new LogCurveInfo();
                 indexLci.Mnemonic = "DATETIME";
                 var restLcis = LogCurveInfos; // rest_lcis = lcis.reject {|lci| ['time', 'date'].member?(lci.mnemonic.downcase)}  
 
                 newLcis = [indexLci] + restLcis;
                 isIndexIndex = 0 // lambda {|i| (i == time_index || i == date_index) }
-                getIndex = 0; 
-
+                
+                var date = "";
+                var time = "";
+                DateTime dt = new DateTime();
+                if (dateFormat == "1")
+                {
+                    double offset = las.StartDateTimeIndex;
+                    double dtf = Convert.ToDouble(date);
+                    if (dtf < 86400000 && !Double.IsNaN(offset))
+                    {
+                        dt = (new DateTime(1970, 1, 1, 0, 0, 0, 0)).AddSeconds(dtf + offset);
+                    }
+                    else
+                    {
+                        dt = (new DateTime(1970, 1, 1, 0, 0, 0, 0)).AddSeconds(dtf);
+                    }
+                }
+                else
+                {
+                    if (dateFormat == "yymmdd") {
+                        date = date.Substring("(\d\d)(\d\d)(\d\d)", "\2/\3/\1");
+                    }
+                    time = values[timeIndex];
+                    if (true) { // /\d\d\d\d\d\d/=~ time 
+                        time = time.Substring("(\d\d)(\d\d)(\d\d)", "\1:\2:\3");
+                    }
+                    dt = DateTime.Parse(time + " " + date);
+                }
             }
+
+            return object[] { newLcis, indexLci, isIndexIndex,getIndex};
         }
 
         public object[] MakeTimeIndexes(List<LogCurveInfo> lcis)
@@ -176,7 +206,7 @@ namespace ClassLibrary1
 
         private string escapeText(string text)
         {
-            return text.Trim(new Char[] { '&', '<', '>', '/', '\'', '\"'});
+            return HttpUtility.HtmlEncode(text.Trim());
         }
 
         private void AddLogCurveInfo(LogCurveInfo lasLci, int columnIndex, int minIndex, int maxIndex, string measureDepthUnit)
