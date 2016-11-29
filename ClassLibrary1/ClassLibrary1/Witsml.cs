@@ -92,6 +92,8 @@ namespace ClassLibrary1
         {
             LogCurveInfos = las.LogCurveInfos;
             List<LogCurveInfo> newLcis = new List<LogCurveInfo>();
+            int isIndexIndex = -1;
+            int getIndex = -1;
 
             // Set these variables, which depend on whether we have a time or a depth log:
             // newLcis : possibly modified (to merge date+time) list of logCurveInfos
@@ -104,8 +106,8 @@ namespace ClassLibrary1
             {
                 newLcis = LogCurveInfos;
                 var indexLci = LogCurveInfos[0];
-                // var isIndexIndex = LambdaExpression
-                // var getIndex = LambdaExpression
+                // isIndexIndex = LambdaExpression ( lambda {|i| (i == 0) } )
+                // getIndex = LambdaExpression
             }
             else // это временной отрезок
             {
@@ -115,20 +117,23 @@ namespace ClassLibrary1
                 var indexLci = new LogCurveInfo();
                 indexLci.Mnemonic = "DATETIME";
                 var restLcis = LogCurveInfos; // rest_lcis = lcis.reject {|lci| ['time', 'date'].member?(lci.mnemonic.downcase)}  
+
                 newLcis = [indexLci] + restLcis;
+                isIndexIndex = 0 // lambda {|i| (i == time_index || i == date_index) }
+                getIndex = 0; 
 
             }
         }
 
         public int[] MakeTimeIndexes(List<LogCurveInfo> lcis)
         {
-// Typically we see DATE and TIME
-// We can also see only TIME in which case we expect long integer seconds since 1970
-// (There's no spec that says that; but this data comes from SLB's IDEAL which uses Unix epoch)
-// M/D Totco declares one curve named DATE. It has space separated data and time.
+            // Typically we see DATE and TIME
+            // We can also see only TIME in which case we expect long integer seconds since 1970
+            // (There's no spec that says that; but this data comes from SLB's IDEAL which uses Unix epoch)
+            // M/D Totco declares one curve named DATE. It has space separated data and time.
 
-            var dateIndex = lcis.Where(x => x.Mnemonic == "date"); //?? Тут какой то лямбда запрос, пока не разобрался
-            var timeIndex = lcis.Where(x => x.Mnemonic == "time"); //?? видимо получить номер колонны из lci
+            LogCurveInfo dateIndex = lcis.Where(x => x.Mnemonic == "date"); //?? Тут какой то лямбда запрос, пока не разобрался
+            LogCurveInfo timeIndex = lcis.Where(x => x.Mnemonic == "time"); //?? видимо получить номер колонны из lci
             char dateFormat;
 
             if (timeIndex == null)
@@ -146,7 +151,7 @@ namespace ClassLibrary1
                 // dateFormat = lcis[dateIndex].Unit.ToLower();
             }
 
-            return new int[] { dateIndex, timeIndex, dateFormat };
+            return new LogCurveInfo[] { dateIndex, timeIndex, dateFormat };
         }
 
         private void AddElement(string name, Dictionary<string, string> attributes)
@@ -155,7 +160,7 @@ namespace ClassLibrary1
 
             foreach(var attr in attributes)
             {
-                OutputStream.Write(attr.Key + "=" + attr.Value);
+                OutputStream.Write(attr.Key + "=" + escapeText(attr.Value));
             }
 
             OutputStream.Write(">\n");
@@ -165,8 +170,41 @@ namespace ClassLibrary1
         private void AddTextElement(string name, string text)
         {
             OutputStream.Write("<" + name + ">");
-            OutputStream.Write(text);
+            OutputStream.Write(escapeText(text));
             OutputStream.Write("</" + name + ">\n");
+        }
+
+        private string escapeText(string text)
+        {
+            return text.Trim(new Char[] { '&', '<', '>', '/', '\'', '\"'});
+        }
+
+        private void AddLogCurveInfo(LogCurveInfo lasLci, int columnIndex, int minIndex, int maxIndex, string measureDepthUnit)
+        {
+            Dictionary<string, string> mnemonicDict = new Dictionary<string, string>();
+            mnemonicDict.Add("uid", lasLci.Mnemonic);
+            AddElement("logCurveInfo", mnemonicDict);
+            AddTextElement("mnemonic", lasLci.Mnemonic);
+            AddTextElement("unit", lasLci.Unit);
+
+            if (String.IsNullOrEmpty(measureDepthUnit))
+            {
+                AddTextElement("minIndex", minIndex.ToString());
+                AddTextElement("maxIndex", maxIndex.ToString());
+            }
+            else
+            {
+                AddTextElement("minDateTimeIndex", minIndex.ToString());
+                AddTextElement("maxDateTimeIndex", maxIndex.ToString());
+            }
+
+            if (WitsmlVersion < 1410)
+            {
+                AddTextElement("columnIndex", columnIndex.ToString());
+            }
+
+            AddTextElement("curveDescription", lasLci.Description);
+            AddTextElement("typeLogData", "float");
         }
     }
 }
