@@ -7,6 +7,13 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "las2witsmlLIB", "ClassLibra
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ConsoleApplication1", "ConsoleApplication1\ConsoleApplication1.csproj", "{79595F0F-D125-42B2-A277-A253CCD98278}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WindowsFormInterfaceForLas2Witsml", "WindowsFormInterfaceForLas2Witsml\WindowsFormInterfaceForLas2Witsml.csproj", "{42BFE7AD-4879-48A3-A970-779D2C93423D}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{828D1EBF-C47B-4616-8E5C-2D4FEE061CB7}"
+	ProjectSection(SolutionItems) = preProject
+		README.md = README.md
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,6 +28,10 @@ Global
 		{79595F0F-D125-42B2-A277-A253CCD98278}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{79595F0F-D125-42B2-A277-A253CCD98278}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{79595F0F-D125-42B2-A277-A253CCD98278}.Release|Any CPU.Build.0 = Release|Any CPU
+		{42BFE7AD-4879-48A3-A970-779D2C93423D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{42BFE7AD-4879-48A3-A970-779D2C93423D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{42BFE7AD-4879-48A3-A970-779D2C93423D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{42BFE7AD-4879-48A3-A970-779D2C93423D}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

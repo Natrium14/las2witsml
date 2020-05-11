@@ -1,8 +1,11 @@
 ﻿using System;
 using System.IO;
 using System.Collections.Generic;
+using System.Text.RegularExpressions;
+using System.Linq;
+using System.Globalization;
 
-namespace ClassLibrary1
+namespace Las2witsmlLIB
 {
     /// <summary>
     ///     Класс для описания сущности las-файла
@@ -19,10 +22,10 @@ namespace ClassLibrary1
             MeasuredDepthUnit = null;
             StartMeasuredDepthIndex = 0;
             StopMeasuredDepthIndex = 0;
-            StartDateTimeIndex = 0;
-            StopDateTimeIndex = 0;
+            StartDateTimeIndex = new DateTime(1970, 1, 1, 0, 0, 0, 0);
+            StopDateTimeIndex = new DateTime(1970, 1, 1, 0, 0, 0, 0);
             StepIncrement = 0;
-            NullValue = null;
+            NullValue = 0;
             ServiceCompany = null;
             ElevationKellyBushing = null;
             LogMeasuredFrom = null;
@@ -37,10 +40,10 @@ namespace ClassLibrary1
         public string MeasuredDepthUnit { get; set; }
         public double StartMeasuredDepthIndex { get; set; }
         public double StopMeasuredDepthIndex { get; set; }
-        public double StartDateTimeIndex { get; set; }
-        public double StopDateTimeIndex { get; set; }
+        public DateTime StartDateTimeIndex { get; set; }
+        public DateTime StopDateTimeIndex { get; set; }
         public double StepIncrement { get; set; }
-        public string NullValue { get; set; }
+        public double NullValue { get; set; }
         public string ServiceCompany { get; set; }
         public string ElevationKellyBushing { get; set; }
         public string LogMeasuredFrom { get; set; }
@@ -52,7 +55,7 @@ namespace ClassLibrary1
 
         private StreamReader InputStream { get; }
         private string nextLine { get; set; }
-        private char[] separator = new char[] {'~','.',':',' '};
+        private string Line { get; set; }
 
         // Главный метод данного класса, где будет считываться весь файл по секциям
         //
@@ -60,38 +63,99 @@ namespace ClassLibrary1
         {
             while (!InputStream.EndOfStream)
             {
-                nextLine = ReadNextLine();
-                var section = '0';
-                if (nextLine != null)
+                Line = ReadNextLine();
+                if (String.IsNullOrEmpty(Line) || Line[0]=='#')
                 {
-                    section = char.ToLower(nextLine[1]);
+                    Line = ReadNextLine();
+                }
+                var section = '0';
+                if (Line != null && Line[0] == '~')
+                {
+                    section = char.ToLower(Line[1]);
                 }
 
                 switch (section)
                 {                    
                     case 'w':
-                        SectionWell(nextLine);
+                        nextLine = ReadNextLine();
+                        SectionWell();
                         break;
                     case 'c':
-                        SectionCurve(nextLine);
+                        nextLine = ReadNextLine();
+                        SectionCurve();
                         break;
                     case 'p':
-                        SectionParameter(nextLine);
+                        nextLine = ReadNextLine();
+                        SectionParameter();
                         break;
                 }
+
+                if (section == 'a')
+                {
+                    break;
+                }
+            }
+        }
+
+        public void EachDataLine(Witsml witsml)
+        {
+            while(!InputStream.EndOfStream)
+            {
+                try
+                {
+                    Line = ReadNextLine();
+                    if (String.IsNullOrEmpty(Line) || Line[0] == '#')
+                    {
+                        Line = ReadNextLine();
+                    }
+
+                    string dataString = "";
+                    Line = Line.Replace("\t", " ");
+                    var dataLine = Line.Split(' ').Where(x=> x!= "").ToArray();
+                    if (String.IsNullOrEmpty(this.MeasuredDepthUnit))
+                    {
+                        dataLine[0] = witsml.MakeDateFromDouble(dataLine[0], this);
+                    }
+                    
+                    foreach(var str in dataLine)
+                    {
+                        if (str == dataLine.Last())
+                        {
+                            dataString += str;
+                        }
+                        else
+                        {
+                            dataString += str + ',';
+                        }
+                    }
+
+                    witsml.xmlWriter.WriteElementString("data", dataString);
+                }
+                catch(Exception ee)
+                {}
             }
         }
 
         // Переход к следующей строке файла
         //
-        public string ReadNextLine()
+        private string ReadNextLine()
         {
-            return InputStream.ReadLine();
+            Line = "";
+            if (!string.IsNullOrEmpty(nextLine))
+            {
+                Line = nextLine;
+                nextLine = null;
+            }
+            else
+            {
+                Line = InputStream.ReadLine();
+            }
+            return Line;
         }
 
-        // Переход к предидущей строке файла
+        // Переход к предыдущей строке файла
         //
-        public void PreviousLine(string line)
+        private void PreviousLine(string line)
         {
             nextLine = line; 
         }
@@ -104,142 +168,182 @@ namespace ClassLibrary1
                 (unit.ToLower() == "f")  || 
                 (unit.ToLower() == "fm") || 
                 (unit.ToLower() == "cm") || 
-                (unit.ToLower() == "in"))
+                (unit.ToLower() == "in") ||
+                (unit.ToLower() == "m"))
             {
                 return unit;
             }
             else return null;
         }
 
-        // Проверка - является ли измеряемый промежуток отрезком времени 
+        // Если измеряемый промежуток не глубина, то парсим дату 
         //
-        public double ParseDate(string data, string info, string unit)
+        private static DateTime ParseDateTime2(string data, string info, string unit = "s")
         {
-            if (unit.ToLower() == "s" || unit.ToLower() == "sec")
+            DateTime dateTime;
+            if (DateTime.TryParse(data, DateTimeFormatInfo.InvariantInfo, DateTimeStyles.AssumeUniversal, out dateTime))
             {
-                return Convert.ToDouble(data);
+                return dateTime;
             }
-            if (unit.ToLower() == "date" || unit.ToLower() == "d")
+            
+            var offset = Parsing.ParseDouble(data);
+            if (double.TryParse(data, NumberStyles.Any, NumberFormatInfo.InvariantInfo, out offset))
             {
-                // HZ 
-                return Convert.ToDouble(data);
+                var secondsSince1970 = unit?.Equals("date", StringComparison.OrdinalIgnoreCase) == true;
+                if (!secondsSince1970)
+                {
+                    var date = Parsing.ParseDateTime(info);
+                    //return date.AddSeconds(offset);
+                    return date;
+                }
+                return new DateTime(1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc).AddSeconds(offset);
             }
-            return -1;
+            throw new ApplicationException($"Значение '{data}' не возможно представить как дату/время.");
         }
-          
+
         // Обработка секции W
         //
-        public void SectionWell(string line)
+        private void SectionWell()
         {
-            while (line[0] != '~')
+            nextLine = null;
+            while (Line[0] != '~')
             {
-                line = ReadNextLine();
-                string[] mnemonicLine = line.Split(separator); // Тут ОШИБКА - нужно правильно рассечь строку на 4 части, видимо нужно использовать регулярные выражения
-                string mnemonic = mnemonicLine[0]; // Навзание мнемоники
-                string unit = mnemonicLine[1]; // Единицы измерения
-                string data = mnemonicLine[2]; // Значение
-                string info = mnemonicLine[3]; // Описание
+                try {
+                    var regex = new Regex(@"^([^~][^\.]+?)\.([^\s]*)(.*?):(.*)$", RegexOptions.IgnoreCase);
+                    var m = regex.Match(Line).Groups.Cast<Group>().Skip(1).Take(4).Select(x => x.Value.Trim()).ToList();
+                    var mnemonic = m[0];
+                    var unit = m[1];
+                    var data = m[2];
+                    var info = m[3];
 
-                switch (mnemonic)
+                    switch (mnemonic)
+                    {
+                        case "STRT":
+                            if (IsDepthUnit(unit) != null)
+                            {
+                                MeasuredDepthUnit = unit;
+                                StartMeasuredDepthIndex = Parsing.ParseDouble(data);
+                            }
+                            else
+                            {
+                                StartDateTimeIndex = ParseDateTime2(data, info, unit); // тут ошибка пока-что = нужно парсить дату или секунды - хз пока
+                            }
+                            break;
+                        case "STOP":
+                            if (IsDepthUnit(unit) != null)
+                            {
+                                MeasuredDepthUnit = unit;
+                                StopMeasuredDepthIndex = Parsing.ParseDouble(data);
+                            }
+                            else
+                            {
+                                StopDateTimeIndex = ParseDateTime2(data, info, unit); // тут ошибка пока-что = нужно парсить дату или секунды - хз пока
+                            }
+                            break;
+                        case "STEP":
+                            StepIncrement = Parsing.ParseDouble(data);
+                            break;
+                        case "NULL":
+                            NullValue = Parsing.ParseDouble(data);
+                            break;
+                        case "SRVC":
+                            ServiceCompany = data;
+                            break;
+                    }
+                }
+                catch(Exception ee) { }
+
+                Line = ReadNextLine();
+                if (String.IsNullOrEmpty(Line))
                 {
-                    case "STRT":
-                        if (IsDepthUnit(unit) != null)
-                        {
-                            MeasuredDepthUnit = unit;
-                            StartMeasuredDepthIndex = Convert.ToDouble(data);
-                        }
-                        else
-                        {
-                            StartDateTimeIndex = ParseDate(data, info, unit); // тут ошибка пока-что = нужно парсить дату или секунды - хз пока
-                        }
-                        break;
-                    case "STOP":
-                        if (IsDepthUnit(unit) != null)
-                        {
-                            MeasuredDepthUnit = unit;
-                            StopMeasuredDepthIndex = Convert.ToDouble(data);
-                        }
-                        else
-                        {
-                            StopDateTimeIndex = ParseDate(data, info, unit); // тут ошибка пока-что = нужно парсить дату или секунды - хз пока
-                        }
-                        break;
-                    case "STEP":
-                        StepIncrement = Convert.ToDouble(data);
-                        break;
-                    case "NULL":
-                        NullValue = data;
-                        break;
-                    case "SRVC":
-                        ServiceCompany = data;
-                        break;
-                }                
+                    Line = ReadNextLine();
+                }
             }
-            PreviousLine(line); 
+            PreviousLine(Line); 
         }
 
         // Обработка секции C
         //
-        public void SectionCurve(string line)
+        private void SectionCurve()
         {
-            while (line[0] != '~')
+            nextLine = null;
+            while (Line[0] != '~')
             {
-                line = ReadNextLine();
-                string[] mnemonicLine = line.Split(separator); // Тут ОШИБКА - нужно правильно рассечь строку на 3 части, видимо нужно использовать регулярные выражения
-                string mnemonic = mnemonicLine[0]; // Навзание мнемоники
-                string unit     = mnemonicLine[1]; // Единицы измерения
-                string info     = mnemonicLine[2]; // Описание
+                try {
+                    var regex = new Regex(@"^([^~][^\.]+)\.([^: \t]*)\s*([^:]*):(.*)$", RegexOptions.IgnoreCase);
+                    var m = regex.Match(Line).Groups.Cast<Group>().Skip(1).Take(4).Select(x => x.Value.Trim()).ToList();
+                    var mnemonic = m[0];
+                    var unit = m[1];
+                    var _ = m[2];
+                    var info = m[3];
 
-                LogCurveInfos.Add(new LogCurveInfo(mnemonic, unit.ToLower(), info));
+                    LogCurveInfos.Add(new LogCurveInfo(mnemonic, unit.ToLower(), info));
+                }
+                catch(Exception ee) { }
+
+                Line = ReadNextLine();
+                if (String.IsNullOrEmpty(Line) || Line[0] == '#')
+                {
+                    Line = ReadNextLine();
+                }
             }
-            PreviousLine(line); //// "Вот это я пока не понял как сделать"
+            PreviousLine(Line);
         }
 
         // Обработка секции P
         //
-        public void SectionParameter(string line)
+        private void SectionParameter()
         {
             // У меня такое чуство, что все эти параметры разработчики взяли откуда то непонятно, и их не надо сюда писать
             // но для примера пусть будут
-            while (line[0] != '~')
+            while (Line[0] != '~')
             {
-                line = ReadNextLine();
-                string[] mnemonicLine = line.Split(separator); // Тут ОШИБКА - нужно правильно рассечь строку на 3 части, видимо нужно использовать регулярные выражения
-                string mnemonic = mnemonicLine[0]; // Навзание мнемоники
-                string unit     = mnemonicLine[1]; // Единицы измерения
-                string data     = mnemonicLine[2]; // Значение
+                try {
+                    var regex = new Regex(@"^([^~][^\.]+)\.([^\s]*)(.*):(.*)$", RegexOptions.IgnoreCase);
+                    var m = regex.Match(Line).Groups.Cast<Group>().Skip(1).Take(4).Select(x => x.Value.Trim()).ToList();
+                    var mnemonic = m[0];
+                    var unit = m[1];
+                    var data = m[2];
 
-                switch(mnemonic)
+                    switch (mnemonic)
+                    {
+                        case "RUN":
+                            RunNumber = Convert.ToDouble(data);
+                            break;
+                        case "PDAT":
+                            PermanentDatum = data;
+                            break;
+                        case "EPD":
+                            ElevationPermanentDatum = Convert.ToDouble(data);
+                            ElevationUnit = unit;
+                            break;
+                        case "EGL":
+                            ElevationPermanentDatum = Convert.ToDouble(data);
+                            ElevationUnit = unit;
+                            break;
+                        case "LMF":
+                            LogMeasuredFrom = data;
+                            break;
+                        case "APD":
+                            AbovePermanentDatum = Convert.ToDouble(data);
+                            ElevationUnit = unit;
+                            break;
+                        case "EKB":
+                            ElevationKellyBushing = data;
+                            ElevationUnit = unit;
+                            break;
+                    }
+                }
+                catch(Exception ee) { }
+
+                Line = ReadNextLine();
+                if (String.IsNullOrEmpty(Line) || Line[0] == '#')
                 {
-                    case "RUN":
-                        RunNumber = Convert.ToDouble(data);
-                        break;
-                    case "PDAT":
-                        PermanentDatum = data;
-                        break;
-                    case "EPD":
-                        ElevationPermanentDatum = Convert.ToDouble(data);
-                        ElevationUnit = unit;
-                        break;
-                    case "EGL":
-                        ElevationPermanentDatum = Convert.ToDouble(data);
-                        ElevationUnit = unit;
-                        break;
-                    case "LMF":
-                        LogMeasuredFrom = data;
-                        break;
-                    case "APD":
-                        AbovePermanentDatum = Convert.ToDouble(data);
-                        ElevationUnit = unit;
-                        break;
-                    case "EKB":
-                        ElevationKellyBushing = data;
-                        ElevationUnit = unit;
-                        break;
+                    Line = ReadNextLine();
                 }
             }
             
-            PreviousLine(line); 
+            PreviousLine(Line); 
         }
         
     }

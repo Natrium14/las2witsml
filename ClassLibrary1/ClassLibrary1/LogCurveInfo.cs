@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace ClassLibrary1
+namespace Las2witsmlLIB
 {
     /// <summary>
     /// Класс для описания сущности лога кривой

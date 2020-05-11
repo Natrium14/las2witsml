@@ -1,5 +1,16 @@
-C:\Users\Борис\Desktop\las2witsmlLIB\ClassLibrary1\ClassLibrary1\bin\Debug\ClassLibrary1.dll
-C:\Users\Борис\Desktop\las2witsmlLIB\ClassLibrary1\ClassLibrary1\bin\Debug\ClassLibrary1.pdb
+C:\Users\Борис\Desktop\las2witsmlLIB\ClassLibrary1\ClassLibrary1\bin\Debug\Newtonsoft.Json.dll
+C:\Users\Борис\Desktop\las2witsmlLIB\ClassLibrary1\ClassLibrary1\bin\Debug\Newtonsoft.Json.xml
+C:\Users\Борис\Desktop\las2witsmlLIB\ClassLibrary1\ClassLibrary1\bin\Debug\Las2witsmlLIB.dll
+C:\Users\Борис\Desktop\las2witsmlLIB\ClassLibrary1\ClassLibrary1\bin\Debug\Las2witsmlLIB.pdb
+C:\Users\Борис\Desktop\las2witsmlLIB\ClassLibrary1\ClassLibrary1\obj\Debug\Las2witsmlLIB.dll
+C:\Users\Борис\Desktop\las2witsmlLIB\ClassLibrary1\ClassLibrary1\obj\Debug\Las2witsmlLIB.pdb
 C:\Users\Борис\Desktop\las2witsmlLIB\ClassLibrary1\ClassLibrary1\obj\Debug\las2witsmlLIB.csprojResolveAssemblyReference.cache
-C:\Users\Борис\Desktop\las2witsmlLIB\ClassLibrary1\ClassLibrary1\obj\Debug\ClassLibrary1.dll
-C:\Users\Борис\Desktop\las2witsmlLIB\ClassLibrary1\ClassLibrary1\obj\Debug\ClassLibrary1.pdb
+F:\backup\backup 20.04.2018\Рабочий стол\las2witsmlLIB\ClassLibrary1\ClassLibrary1\bin\Debug\Las2witsmlLIB.dll
+F:\backup\backup 20.04.2018\Рабочий стол\las2witsmlLIB\ClassLibrary1\ClassLibrary1\bin\Debug\Las2witsmlLIB.pdb
+F:\backup\backup 20.04.2018\Рабочий стол\las2witsmlLIB\ClassLibrary1\ClassLibrary1\bin\Debug\Newtonsoft.Json.dll
+F:\backup\backup 20.04.2018\Рабочий стол\las2witsmlLIB\ClassLibrary1\ClassLibrary1\bin\Debug\Newtonsoft.Json.xml
+F:\backup\backup 20.04.2018\Рабочий стол\las2witsmlLIB\ClassLibrary1\ClassLibrary1\obj\Debug\las2witsmlLIB.csprojAssemblyReference.cache
+F:\backup\backup 20.04.2018\Рабочий стол\las2witsmlLIB\ClassLibrary1\ClassLibrary1\obj\Debug\las2witsmlLIB.csproj.CoreCompileInputs.cache
+F:\backup\backup 20.04.2018\Рабочий стол\las2witsmlLIB\ClassLibrary1\ClassLibrary1\obj\Debug\las2witsmlLIB.csproj.CopyComplete
+F:\backup\backup 20.04.2018\Рабочий стол\las2witsmlLIB\ClassLibrary1\ClassLibrary1\obj\Debug\Las2witsmlLIB.dll
+F:\backup\backup 20.04.2018\Рабочий стол\las2witsmlLIB\ClassLibrary1\ClassLibrary1\obj\Debug\Las2witsmlLIB.pdb
